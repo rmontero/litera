@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Bunk Bed Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a framed drawing sheet holds the live model; a spec rail beside it carries fit checks and editable measurements. Stacks on phones. Single deliberate blueprint look. */
+:root{
+  --sheet:#0f3a60;
+  --paper-deep:#0a2a47;
+  --ink:#eaf3fb;
+  --ink-2:#a8c4db;
+  --ink-3:#7896b1;
+  --rule:rgba(190,220,245,.16);
+  --rule-strong:rgba(190,220,245,.34);
+  --dim:#ffd27a;
+  --ok:#7fdca3; --warn:#ffb15e; --bad:#ff8a8a;
+  /* annotation colors when the canvas switches to the light render */
+  --r-bg:rgba(250,248,244,.94); --r-dim:#9a3f0b; --r-ok:#11703a; --r-warn:#b4410b; --r-bad:#b91c1c; --r-tag:#3f4d59;
+  --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--paper-deep);color:var(--ink);font:400 15px/1.5 var(--f-body);-webkit-font-smoothing:antialiased}
+
+.app{height:100%;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* drawing sheet */
+.stage{position:relative;min-width:0;min-height:0;background:var(--sheet);border:1px solid var(--rule-strong);overflow:hidden;isolation:isolate;
+  --lbl-bg:var(--sheet);--lbl-dim:var(--dim);--lbl-ok:var(--ok);--lbl-warn:var(--warn);--lbl-bad:var(--bad);--lbl-tag:var(--ink-2)}
+.stage[data-mode="render"]{--lbl-bg:var(--r-bg);--lbl-dim:var(--r-dim);--lbl-ok:var(--r-ok);--lbl-warn:var(--r-warn);--lbl-bad:var(--r-bad);--lbl-tag:var(--r-tag)}
+.stage::after{content:"";position:absolute;inset:8px;border:1px solid var(--rule);pointer-events:none;z-index:3}
+.vp{position:absolute;inset:0;z-index:0}
+.vp canvas{display:block;width:100%;height:100%}
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1}
+.dl{position:absolute;left:0;top:0;display:flex;align-items:baseline;gap:4px;white-space:nowrap;padding:3px 5px 2px;background:var(--lbl-bg);color:var(--lbl-dim);font:600 13.5px/1 var(--f-display);letter-spacing:.02em;font-variant-numeric:tabular-nums;will-change:transform}
+.dl i{font-style:normal;font-weight:500;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;opacity:.85}
+.dl--ok,.dl--warn,.dl--bad{outline:1px dashed currentColor;outline-offset:-1px}
+.dl--ok{color:var(--lbl-ok)} .dl--warn{color:var(--lbl-warn)} .dl--bad{color:var(--lbl-bad)}
+.tag{position:absolute;left:0;top:0;white-space:nowrap;color:var(--lbl-tag);font:600 11px/1 var(--f-display);letter-spacing:.15em;text-transform:uppercase;will-change:transform}
+
+.toolbar{position:absolute;top:16px;left:16px;right:16px;z-index:2;display:flex;flex-wrap:wrap;gap:8px;pointer-events:none}
+.seg,.chip{pointer-events:auto}
+.seg{display:inline-flex;gap:2px;padding:2px;background:var(--paper-deep);border:1px solid var(--rule-strong)}
+.seg button,.chip{font:600 13px/1 var(--f-display);letter-spacing:.11em;text-transform:uppercase;color:var(--ink-2);background:transparent;border:0;padding:8px 11px 7px;cursor:pointer}
+.seg button:hover,.chip:hover{color:var(--ink)}
+.seg button[aria-selected="true"],.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper-deep)}
+.chip{background:var(--paper-deep);border:1px solid var(--rule-strong);display:inline-flex;align-items:center;gap:8px}
+.chip::before{content:"";width:9px;height:9px;border:1px solid currentColor}
+.chip[aria-pressed="true"]{color:var(--dim)}
+.chip[aria-pressed="true"]::before{background:currentColor}
+button:focus-visible,input:focus-visible{outline:2px solid var(--dim);outline-offset:1px}
+
+.foot-l{position:absolute;left:16px;bottom:16px;z-index:2;display:flex;flex-direction:column;align-items:flex-start;gap:6px;pointer-events:none}
+.scale,.hint{background:var(--paper-deep);border:1px solid var(--rule);padding:5px 8px}
+.scale{display:flex;align-items:center;gap:8px;font:500 10.5px/1 var(--f-mono);color:var(--ink)}
+.scale-bar{height:6px;border:1px solid var(--ink);background:linear-gradient(90deg,var(--ink) 0 25%,transparent 25% 50%,var(--ink) 50% 75%,transparent 75%)}
+.hint{margin:0;font-size:12px;line-height:1.3;color:var(--ink-2)}
+
+.tb{position:absolute;right:16px;bottom:16px;z-index:2;pointer-events:none;display:grid;grid-template-columns:repeat(4,auto);background:var(--paper-deep);border:1px solid var(--rule-strong);font:500 11px/1.15 var(--f-mono);color:var(--ink)}
+.tb>div{display:flex;flex-direction:column;gap:3px;padding:6px 11px;border-left:1px solid var(--rule)}
+.tb>div:nth-child(2){border-left:0}
+.tb .tb-name{grid-column:1/-1;border-left:0;border-bottom:1px solid var(--rule);font:700 12.5px/1.1 var(--f-display);letter-spacing:.13em;text-transform:uppercase;padding:7px 11px}
+.tb span{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.nogl{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--ink-2);z-index:4}
+
+/* spec rail */
+.rail{min-width:0;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:26px;padding-right:4px;padding-bottom:8px}
+.eyebrow{margin:0 0 8px;font:500 11px/1.3 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+h1{margin:0;font:700 31px/1 var(--f-display);letter-spacing:.03em;text-transform:uppercase;text-wrap:balance}
+.lede{margin:10px 0 0;font-size:14.5px;color:var(--ink-2);max-width:62ch}
+h2{display:flex;align-items:center;gap:10px;margin:0 0 12px;font:600 12.5px/1 var(--f-display);letter-spacing:.17em;text-transform:uppercase;color:var(--ink-2)}
+h2::after{content:"";flex:1;border-top:1px solid var(--rule)}
+h2 small{font:500 10.5px/1 var(--f-mono);letter-spacing:.06em;text-transform:none;color:var(--ink-3)}
+.verdict{margin:0 0 12px;font:600 20px/1.22 var(--f-display);letter-spacing:.01em;text-wrap:balance}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.ck{--s:var(--ink-3);display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:baseline;column-gap:10px;row-gap:2px;padding:9px 0 9px 12px;border-left:2px solid var(--s);border-bottom:1px solid var(--rule)}
+.ck[data-s="ok"]{--s:var(--ok)} .ck[data-s="warn"]{--s:var(--warn)} .ck[data-s="bad"]{--s:var(--bad)}
+.ck-k{font-weight:500;font-size:14.5px}
+.ck-v{font:500 15px/1 var(--f-mono);font-variant-numeric:tabular-nums}
+.ck-v small{margin-left:2px;font-size:11px;color:var(--ink-3)}
+.ck-s{min-width:46px;text-align:center;padding:3px 6px 2px;border:1px solid currentColor;color:var(--s);font:600 10.5px/1 var(--f-display);letter-spacing:.13em;text-transform:uppercase}
+.ck-n{grid-column:1/-1;font-size:12.5px;line-height:1.35;color:var(--ink-3)}
+.legend{margin:12px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:12px;color:var(--ink-3)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend span::before{content:"";width:20px;border-top:2px solid var(--dim)}
+.legend span.c::before{border-top:2px dashed var(--ok)}
+
+.params{display:flex;flex-direction:column;gap:16px}
+fieldset{margin:0;padding:0;border:0;min-width:0;display:flex;flex-direction:column;gap:6px}
+legend{padding:0;margin-bottom:6px;font:600 11.5px/1 var(--f-display);letter-spacing:.15em;text-transform:uppercase;color:var(--ink-3)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 88px;align-items:center;gap:10px}
+.row--seg{grid-template-columns:minmax(0,1fr) auto}
+.row label,.row .lbl{font-size:14px;color:var(--ink-2)}
+.row input{width:100%;padding:7px 8px;border:1px solid var(--rule-strong);border-radius:0;background:var(--sheet);color:var(--ink);font:500 14px/1 var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+.row input[aria-invalid="true"]{border-color:var(--bad)}
+.row .seg button{padding:7px 10px 6px;font-size:12px}
+.msg{margin:10px 0 0;min-height:1.2em;font-size:12.5px;color:var(--bad)}
+.fine{margin:4px 0 12px;font-size:12.5px;line-height:1.4;color:var(--ink-3)}
+.btn{font:600 12.5px/1 var(--f-display);letter-spacing:.13em;text-transform:uppercase;color:var(--ink);background:transparent;border:1px solid var(--rule-strong);padding:10px 13px 9px;cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.notes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.notes li{padding-left:12px;border-left:1px solid var(--rule-strong);font-size:14px;line-height:1.45;color:var(--ink-2)}
+.notes b{color:var(--ink);font-weight:600}
+
+@media (max-width:860px){
+  html,body{height:auto}
+  .app{display:block;height:auto}
+  .stage{height:70vh;height:70svh;min-height:440px}
+  .rail{overflow:visible;margin-top:22px;padding-right:0}
+  .tb{display:none}
+  .toolbar .seg button,.chip{padding:8px 9px 7px;font-size:12.5px;letter-spacing:.08em}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <main class="stage" id="stage" data-mode="blue" aria-label="Modelo de la litera en la recámara">
+    <div class="vp" id="vp"></div>
+    <div class="labels" id="labels"></div>
+    <div class="toolbar">
+      <div class="seg" role="tablist" aria-label="Vista">
+        <button type="button" role="tab" data-view="p3d" aria-selected="true">3D</button>
+        <button type="button" role="tab" data-view="plan" aria-selected="false">Planta</button>
+        <button type="button" role="tab" data-view="elev" aria-selected="false">Elevación</button>
+        <button type="button" role="tab" data-view="sect" aria-selected="false">Corte</button>
+      </div>
+      <div class="seg" aria-label="Estilo">
+        <button type="button" data-mode="blue" aria-pressed="true">Plano</button>
+        <button type="button" data-mode="render" aria-pressed="false">Render</button>
+      </div>
+      <button type="button" class="chip" id="dimsBtn" aria-pressed="true">Cotas</button>
+    </div>
+    <div class="foot-l">
+      <div class="scale" id="scale" hidden><div class="scale-bar" id="scaleBar"></div><span>0–<span id="scaleTxt">50 cm</span></span></div>
+      <p class="hint" id="hint">Arrastra para girar · rueda o pellizca para acercar</p>
+    </div>
+    <div class="tb" aria-hidden="true">
+      <div class="tb-name">Litera matrimonial e individual · industrial</div>
+      <div><span>Vista</span><b id="tbView">3D</b></div>
+      <div><span>Lámina</span><b id="tbDwg">A-01</b></div>
+      <div><span>Unidades</span><b>cm</b></div>
+      <div><span>Fecha</span><b>2026-10-23</b></div>
+    </div>
+    <div class="nogl" id="nogl" hidden>El modelo 3D necesita WebGL y este navegador no lo ofrece. La revisión de medidas sigue funcionando.</div>
+  </main>
+
+  <aside class="rail">
+    <header>
+      <p class="eyebrow">Estudio de ajuste · entre pared y trabe</p>
+      <h1>Litera matrimonial e individual</h1>
+      <p class="lede">Litera industrial de metal: matrimonial abajo e individual arriba, con la cama superior a 170 cm del piso. El lado largo va contra la pared lateral, la cabecera contra la pared del fondo y la escalera a los pies, de frente a la recámara. La trabe corre paralela a la cama, a 150 cm de la pared lateral.</p>
+    </header>
+
+    <section aria-labelledby="h-fit">
+      <h2 id="h-fit">¿Cabe?</h2>
+      <p class="verdict" id="verdict"></p>
+      <ul class="checks" id="checks"></ul>
+      <p class="legend"><span>Cotas</span><span class="c">Espacios libres, con color según su estado</span></p>
+    </section>
+
+    <section aria-labelledby="h-meas">
+      <h2 id="h-meas">Medidas <small>cm</small></h2>
+      <form class="params" id="params" novalidate>
+        <fieldset>
+          <legend>Recámara</legend>
+          <div class="row"><label for="in-rh">Piso a techo</label><input id="in-rh" name="rh" type="number" inputmode="decimal" step="1"></div>
+          <div class="row"><label for="in-wtb">Pared lateral a trabe</label><input id="in-wtb" name="wtb" type="number" inputmode="decimal" step="1"></div>
+          <div class="row"><label for="in-bu">Piso a parte baja de la trabe</label><input id="in-bu" name="bu" type="number" inputmode="decimal" step="1"></div>
+          <div class="row"><label for="in-bw">Ancho de la trabe*</label><input id="in-bw" name="bw" type="number" inputmode="decimal" step="1"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Litera</legend>
+          <div class="row"><label for="in-W">Ancho</label><input id="in-W" name="W" type="number" inputmode="decimal" step="1"></div>
+          <div class="row"><label for="in-D">Largo</label><input id="in-D" name="D" type="number" inputmode="decimal" step="1"></div>
+          <div class="row"><label for="in-deck">Piso a cama superior</label><input id="in-deck" name="deck" type="number" inputmode="decimal" step="1"></div>
+          <div class="row"><label for="in-rail">Barandal sobre cama superior*</label><input id="in-rail" name="rail" type="number" inputmode="decimal" step="1"></div>
+          <div class="row row--seg"><span class="lbl" id="lbl-top">Cama superior</span>
+            <div class="seg" role="group" aria-labelledby="lbl-top">
+              <button type="button" data-top="twin" aria-pressed="true">Individual</button>
+              <button type="button" data-top="full" aria-pressed="false">Matrimonial</button>
+            </div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Ubicación</legend>
+          <div class="row"><label for="in-gap">Separación de la pared lateral</label><input id="in-gap" name="gap" type="number" inputmode="decimal" step="1"></div>
+          <div class="row"><label for="in-hg">Separación de la pared del fondo</label><input id="in-hg" name="hg" type="number" inputmode="decimal" step="1"></div>
+        </fieldset>
+      </form>
+      <p class="msg" id="formMsg" role="status"></p>
+      <p class="fine">* Supuesto o estimado a partir de la foto del producto. La altura de la cama superior se mide hasta la parte alta de las tablillas; la distancia a la trabe, hasta su cara más cercana. Los colchones se dibujan de 20 cm (abajo) y 15 cm (arriba).</p>
+      <button type="button" class="btn" id="reset">Restablecer medidas originales</button>
+    </section>
+
+    <section aria-labelledby="h-notes">
+      <h2 id="h-notes">Antes de comprar</h2>
+      <ul class="notes">
+        <li><b>Confirma el ancho exterior.</b> 135 × 190 cm es la medida de un colchón matrimonial. Si los 135 del anuncio son del colchón y no del marco, el marco probablemente mide 140–145 cm por fuera y quedarían 5–10 cm a la trabe en lugar de 15. El zoclo también separa la cama 1–2 cm de la pared.</li>
+        <li><b>Pregunta la altura del barandal.</b> Es la única medida estimada. Si mide más de 50 cm, la parte alta queda por encima de la trabe, pero la orilla de la cama individual sigue a 45 cm de ella.</li>
+        <li id="noteSit"></li>
+        <li><b>Deja espacio frente a la escalera.</b> Unos 60 cm libres a los pies para subir (zona punteada en el piso).</li>
+      </ul>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+'use strict';
+document.documentElement.lang='es';
+const $=id=>document.getElementById(id);
+const DEF={rh:280,wtb:150,bu:220,bw:25,W:135,D:205,deck:170,rail:45,gap:0,hg:0,top:'twin'};
+const LIM={rh:[200,400],wtb:[40,400],bu:[100,400],bw:[5,80],W:[80,200],D:[150,260],deck:[60,250],rail:[20,80],gap:[0,60],hg:[0,100]};
+const KEY='bunkbed-blueprint-v3';
+let P=Object.assign({},DEF);
+try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&typeof s==='object'){for(const k in LIM)if(Number.isFinite(s[k]))P[k]=s[k]; if(s.top==='twin'||s.top==='full')P.top=s.top;}}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(P));}catch(e){}};
+const r=n=>(n<-.5?'−':'')+String(Math.abs(Math.round(n)));
+
+function derive(p){
+  const t=5,deckLow=30,mB=20,mT=15;
+  const topW=p.top==='full'?p.W:Math.min(105,p.W);
+  const shoulderEnd=p.deck-t, shoulderStart=Math.max(deckLow+20,shoulderEnd-30);
+  return Object.assign({},p,{t,deckLow,mB,mT,topW,shoulderEnd,shoulderStart,H:p.deck+p.rail,bd:Math.max(0,p.rh-p.bu),
+    x0:-150,xw:p.D+p.hg,zMax:Math.max(p.wtb+p.bw+130,p.gap+p.W+90)});
+}
+/* how far the frame reaches out from the side wall at height y (it narrows at the shoulder) */
+function edgeAt(d,y){
+  if(y<=d.shoulderStart) return d.W;
+  if(y>=d.shoulderEnd) return d.topW;
+  return d.W+(d.topW-d.W)*(y-d.shoulderStart)/(d.shoulderEnd-d.shoulderStart);
+}
+function compute(d){
+  const free0=d.wtb-(d.gap+d.W), over=d.H-d.bu, toCeil=d.rh-d.H;
+  const yTopZone=Math.min(d.H,d.bu), freeB=d.wtb-(d.gap+edgeAt(d,yTopZone));
+  let head=d.rh-(d.deck+d.mT); if(d.gap+d.topW>d.wtb) head=Math.min(head,d.bu-(d.deck+d.mT));
+  const sit=(d.deck-d.t)-(d.deckLow+d.mB), rail=d.H-(d.deck+d.mT);
+  return {free0,over,toCeil,freeB,yTopZone,head,sit,rail,s:{
+    free0:free0>=5?'ok':free0>=0?'warn':((over<=0||freeB>=0)?'warn':'bad'),
+    beam:free0>=0?'ok':(-over>=5?'ok':-over>=0?'warn':(freeB>=0?'warn':'bad')),
+    freeB:freeB>=5?'ok':freeB>=0?'warn':'bad',
+    toCeil:toCeil<0?'bad':'ok',
+    head:head>=90?'ok':head>=75?'warn':'bad',
+    sit:sit>=85?'ok':sit>=65?'warn':'bad',
+    rail:rail>=16?'ok':'bad'}};
+}
+
+/* ---------- side rail ---------- */
+const WORD={ok:'Bien',warn:'Justo',bad:'No'};
+function verdictText(d,c){
+  const vert=Math.abs(c.over)<1?'su barandal queda al nivel de la parte baja de la trabe':c.over<0?`su barandal queda ${r(-c.over)} cm abajo de la trabe`:`su barandal sube ${r(c.over)} cm por encima de la parte baja de la trabe`;
+  const topName=d.top==='full'?'matrimonial':'individual';
+  if(c.free0>=0){
+    let t=`Cabe: la cama queda a ${r(c.free0)} cm de la línea de la trabe y ${vert}.`;
+    if(c.over>-10&&c.freeB>c.free0+1) t+=` Aunque el barandal fuera más alto, la orilla de la cama superior ${topName} queda a ${r(c.freeB)} cm de la trabe a esa altura.`;
+    return t;
+  }
+  if(c.over<=0) return `La cama pasa ${r(-c.free0)} cm de la línea de la trabe, pero queda debajo de ella: ${vert}.`;
+  if(c.freeB>=0) return `A nivel del piso la cama pasa ${r(-c.free0)} cm de la línea de la trabe, pero a la altura de la trabe la cama superior ${topName} queda a ${r(c.freeB)} cm.`;
+  return `No cabe: a la altura de la trabe el marco se mete ${r(-c.freeB)} cm en la trabe.`;
+}
+function renderChecks(d,c){
+  $('verdict').textContent=verdictText(d,c);
+  const rows=[
+    ['Cama a línea de trabe',c.free0,c.s.free0,`${r(d.W)} de cama${d.gap>0?' + '+r(d.gap)+' de separación':''} dentro de ${r(d.wtb)} de la pared lateral a la trabe`],
+    ['Barandal a parte baja de trabe',-c.over,c.s.beam,c.free0>=0?`Barandal a ${r(d.H)}*, trabe a ${r(d.bu)}. La trabe queda al lado de la cama, no encima.`:`Barandal a ${r(d.H)}*, trabe a ${r(d.bu)}`],
+    ['Cama superior a trabe',c.freeB,c.s.freeB,`Cama superior ${d.top==='full'?'matrimonial':'individual'}, medida a la altura del barandal`],
+    ['Marco a techo',c.toCeil,c.s.toCeil,`${r(d.H)}* de marco bajo un techo de ${r(d.rh)}`],
+    ['Altura libre, cama superior*',c.head,c.s.head,'Del colchón al techo. Con unos 90, un adulto se sienta derecho.'],
+    ['Altura libre, cama inferior*',c.sit,c.s.sit,'Del colchón a la parte baja de la cama superior. Con unos 85, un adulto se sienta derecho.'],
+    ['Barandal superior*',c.rail,c.s.rail,`Sobre un colchón de ${d.mT} cm. Mínimo 16.`]
+  ];
+  const ul=$('checks'); ul.textContent='';
+  rows.forEach(([k,v,s,n])=>{
+    const li=document.createElement('li'); li.className='ck'; li.dataset.s=s;
+    const a=document.createElement('span'); a.className='ck-k'; a.textContent=k;
+    const b=document.createElement('span'); b.className='ck-v'; b.textContent=r(v); const u=document.createElement('small'); u.textContent='cm'; b.appendChild(u);
+    const e=document.createElement('span'); e.className='ck-s'; e.textContent=WORD[s];
+    const f=document.createElement('span'); f.className='ck-n'; f.textContent=n;
+    li.append(a,b,e,f); ul.appendChild(li);
+  });
+  const ns=$('noteSit'); ns.textContent='';
+  const bb=document.createElement('b'); bb.textContent=c.sit<85?'La cama inferior es baja.':'La cama inferior tiene altura para sentarse.';
+  ns.append(bb,` Unos ${r(c.sit)} cm del colchón inferior a la parte baja de la cama superior. `+
+    (c.sit<85?'Bien para acostarse y para niños; la mayoría de los adultos no se sienta derecho.':'Suficiente para que un adulto se siente. La cama superior tiene '+r(c.head)+' cm hasta el techo.'));
+}
+function fillForm(){
+  for(const k in LIM){const el=$('in-'+k); if(el){el.value=P[k]; el.setAttribute('aria-invalid','false');}}
+  document.querySelectorAll('[data-top]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.top===P.top)));
+  $('formMsg').textContent='';
+}
+function wireForm(onChange){
+  let tmr=0;
+  $('params').addEventListener('submit',e=>e.preventDefault());
+  $('params').addEventListener('input',e=>{
+    const el=e.target, k=el.name; if(!k||!LIM[k]) return;
+    const v=parseFloat(el.value), lo=LIM[k][0], hi=LIM[k][1], msg=$('formMsg');
+    if(!(Number.isFinite(v)&&v>=lo&&v<=hi)){el.setAttribute('aria-invalid','true'); msg.textContent=`${el.labels[0].textContent.replace('*','')} debe estar entre ${lo} y ${hi} cm.`; return;}
+    const next=Object.assign({},P,{[k]:v});
+    if(next.deck+next.rail>next.rh-5){el.setAttribute('aria-invalid','true'); msg.textContent='La parte alta del barandal debe quedar al menos 5 cm abajo del techo.'; return;}
+    if(next.bu>next.rh){el.setAttribute('aria-invalid','true'); msg.textContent='La parte baja de la trabe no puede estar más alta que el techo.'; return;}
+    document.querySelectorAll('#params input').forEach(i=>i.setAttribute('aria-invalid','false')); msg.textContent='';
+    P=next; save(); clearTimeout(tmr); tmr=setTimeout(onChange,120);
+  });
+  document.querySelectorAll('[data-top]').forEach(b=>b.addEventListener('click',()=>{
+    if(P.top===b.dataset.top) return; P.top=b.dataset.top; save(); fillForm(); onChange();
+  }));
+  $('reset').addEventListener('click',()=>{P=Object.assign({},DEF); save(); fillForm(); onChange();});
+}
+
+/* ---------- 3D ---------- */
+const stage=$('stage'), vp=$('vp'), layer=$('labels');
+let renderer=null;
+if(window.THREE){try{renderer=new THREE.WebGLRenderer({antialias:true});}catch(e){renderer=null;}}
+if(!renderer||!THREE.OrbitControls){
+  $('nogl').hidden=false; fillForm();
+  const upd=()=>{const d2=derive(P); renderChecks(d2,compute(d2));};
+  wireForm(upd); upd(); return;
+}
+const V3=THREE.Vector3, YUP=new V3(0,1,0);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+vp.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const persp=new THREE.PerspectiveCamera(46,1,5,6000);
+const ortho=new THREE.OrthographicCamera(-1,1,1,-1,1,4000);
+let camera=persp, controls=null, halfH=150, world=null, labels=[], d=null, M=null;
+let mode='blue', view='p3d', showDims=true;
+const hv={'3d':'p3d',plan:'plan',elevation:'elev',section:'sect'}[(location.hash||'').slice(1)];
+if(hv) view=hv;
+const reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+const size=()=>({w:Math.max(1,vp.clientWidth),h:Math.max(1,vp.clientHeight)});
+
+function C(hex){const c=new THREE.Color(hex); return mode==='render'?c.convertSRGBToLinear():c;}
+function rng(seed){let s=seed>>>0; return ()=>{s=(s*1664525+1013904223)>>>0; return s/4294967296;};}
+function woodTex(wcm,hcm){
+  const W=1024, H=Math.max(64,Math.round(W*hcm/wcm)), c=document.createElement('canvas'); c.width=W; c.height=H;
+  const g=c.getContext('2d'), R=rng(11), ppc=W/wcm, row=14*ppc;
+  for(let y=0;y<H;y+=row){
+    let x=-R()*120*ppc;
+    while(x<W){
+      const len=(90+R()*120)*ppc;
+      g.fillStyle=`hsl(${29+R()*6},${36+R()*12}%,${60+R()*9}%)`; g.fillRect(x,y,len,row);
+      for(let k=0;k<7;k++){const yy=y+R()*row; g.strokeStyle=`rgba(110,70,35,${.05+R()*.08})`; g.lineWidth=1; g.beginPath(); g.moveTo(x,yy); g.bezierCurveTo(x+len*.33,yy+(R()-.5)*6,x+len*.66,yy+(R()-.5)*6,x+len,yy+(R()-.5)*3); g.stroke();}
+      g.fillStyle='rgba(70,42,18,.35)'; g.fillRect(x,y,1.5,row); x+=len;
+    }
+    g.fillStyle='rgba(70,42,18,.3)'; g.fillRect(0,y,W,1.5);
+  }
+  const tx=new THREE.CanvasTexture(c); tx.encoding=THREE.sRGBEncoding; tx.anisotropy=renderer.capabilities.getMaxAnisotropy(); return tx;
+}
+function makeMats(){
+  const dimM=hex=>new THREE.LineBasicMaterial({color:C(hex),depthTest:false,transparent:true});
+  const dash=(hex,op,ds,gs,dt)=>new THREE.LineDashedMaterial({color:C(hex),dashSize:ds||3,gapSize:gs||2.2,depthTest:!!dt,transparent:true,opacity:op==null?1:op});
+  if(mode==='blue'){
+    const fill=op=>new THREE.MeshBasicMaterial({color:0xdcebf7,transparent:true,opacity:op,depthWrite:false,side:THREE.DoubleSide});
+    const line=(hex,op)=>new THREE.LineBasicMaterial({color:hex,transparent:true,opacity:op});
+    return {
+      frame:{fill:fill(.08),line:line(0xf2f8fd,1)},
+      matt:{fill:fill(.035),line:line(0xb9d3e8,.6)},
+      slat:{line:line(0xb9d3e8,.3)},
+      pillow:{fill:fill(.03),line:line(0xb9d3e8,.5)},
+      slab:{fill:fill(.11),line:line(0xb9d3e8,.5)},
+      ceil:{fill:fill(.04),line:line(0xb9d3e8,.4)},
+      beam:{fill:fill(.2),line:line(0xf2f8fd,.95)},
+      gridMinor:line(0x9fc4e2,.07), gridMajor:line(0x9fc4e2,.18),
+      overhead:dash(0xf2f8fd,.9,8,5,true), zone:dash(0x9fc4e2,.85,6,4,true),
+      dim:dimM(0xffd27a), clr:{ok:dash(0x7fdca3),warn:dash(0xffb15e),bad:dash(0xff8a8a)}
+    };
+  }
+  const std=(hex,ro,me)=>new THREE.MeshStandardMaterial({color:C(hex),roughness:ro,metalness:me||0});
+  const grey=std(0xcfc9c0,.95);
+  const wood=new THREE.MeshStandardMaterial({map:woodTex(d.xw+16-d.x0,d.zMax+16),roughness:.62});
+  return {
+    frame:{fill:std(0xe3277e,.42,.2),cast:true,recv:true},
+    matt:{fill:std(0xf1efea,.95),cast:true,recv:true},
+    slat:{fill:std(0xc89d64,.75),cast:true,recv:true},
+    pillow:{fill:std(0xfbfaf6,.95),cast:true,recv:true},
+    floor:{fill:[grey,grey,wood,grey,grey,grey],recv:true},
+    wall:{fill:std(0xece7df,.95),recv:true},
+    ceilP:std(0xf4f2ee,1),
+    ceil:{fill:std(0xe6e2dc,1)},
+    beam:{fill:std(0xd9d4cc,.9),cast:true,recv:true},
+    overhead:dash(0x55636f,.9,8,5,true), zone:dash(0x6b7884,.9,6,4,true),
+    dim:dimM(0xa3460c), clr:{ok:dash(0x13803d),warn:dash(0xc2410c),bad:dash(0xb91c1c)}
+  };
+}
+
+function place(geo,pos,q,st,ud){
+  const g=new THREE.Group(); g.position.copy(pos); if(q) g.quaternion.copy(q);
+  if(st.fill){const m=new THREE.Mesh(geo,st.fill); m.castShadow=!!st.cast; m.receiveShadow=!!st.recv; g.add(m);}
+  if(st.line){g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),st.line));}
+  if(!st.fill) geo.dispose();
+  if(ud) Object.assign(g.userData,ud);
+  world.add(g); return g;
+}
+function member(a,b,st,s){
+  s=s||d.t; const dir=b.clone().sub(a), len=dir.length(); if(len<.5) return null; dir.divideScalar(len);
+  return place(new THREE.BoxGeometry(s,len,s),a.clone().add(b).multiplyScalar(.5),new THREE.Quaternion().setFromUnitVectors(YUP,dir),st);
+}
+function box(x0,x1,y0,y1,z0,z1,st,ud){
+  if(x1-x0<.1||y1-y0<.1||z1-z0<.1) return null;
+  return place(new THREE.BoxGeometry(x1-x0,y1-y0,z1-z0),new V3((x0+x1)/2,(y0+y1)/2,(z0+z1)/2),null,st,ud);
+}
+function rect(xa,xb,za,zb,y,mat,ud){
+  const p=[[xa,za],[xb,za],[xb,za],[xb,zb],[xb,zb],[xa,zb],[xa,zb],[xa,za]].map(q=>new V3(q[0],y,q[1]));
+  const l=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(p),mat); l.computeLineDistances();
+  Object.assign(l.userData,ud||{}); world.add(l); return l;
+}
+function pillow(cx,cy,cz,sx,sy,sz,st){
+  if(mode==='render'){
+    const m=new THREE.Mesh(new THREE.SphereGeometry(1,28,14),st.fill); m.scale.set(sx/2,sy/2,sz/2); m.position.set(cx,cy,cz); m.castShadow=m.receiveShadow=true; world.add(m);
+  } else box(cx-sx/2,cx+sx/2,cy-sy/2,cy+sy/2,cz-sz/2,cz+sz/2,st);
+}
+
+const AX={x:0,y:1,z:2};
+function dim(a,b,axis,at,text,o){
+  o=o||{}; const i=AX[axis], A=a.slice(), B=b.slice(); A[i]=at; B[i]=at;
+  const pa=new V3(a[0],a[1],a[2]), pb=new V3(b[0],b[1],b[2]), PA=new V3(A[0],A[1],A[2]), PB=new V3(B[0],B[1],B[2]);
+  if(PA.distanceTo(PB)<.5) return;
+  const pts=[PA,PB], n=new V3(); n.setComponent(i,Math.sign(at-a[i])||1);
+  [[pa,PA],[pb,PB]].forEach(([p,Q])=>{const dv=Q.clone().sub(p),L=dv.length(); if(L>2.5){dv.divideScalar(L); pts.push(p.clone().addScaledVector(dv,2),Q.clone().addScaledVector(dv,3));}});
+  const dir=PB.clone().sub(PA).normalize(), tv=dir.clone().add(n).normalize().multiplyScalar(3);
+  [PA,PB].forEach(Q=>pts.push(Q.clone().sub(tv),Q.clone().add(tv)));
+  const clr=o.kind==='clr';
+  const ls=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),clr?M.clr[o.state||'ok']:M.dim);
+  if(clr) ls.computeLineDistances();
+  ls.renderOrder=10; ls.userData.views=o.views; ls.userData.dim=true; world.add(ls);
+  const el=document.createElement('div'); el.className='dl'+(clr?' dl--'+(o.state||'ok'):'');
+  const bEl=document.createElement('b'); bEl.textContent=text; el.appendChild(bEl);
+  if(o.sub){const iEl=document.createElement('i'); iEl.textContent=o.sub; el.appendChild(iEl);}
+  el.hidden=true; layer.appendChild(el);
+  labels.push({pos:PA.clone().lerp(PB,o.frac==null?.5:o.frac),el,userData:{views:o.views,dim:true},on:false});
+}
+function tag(p,text,views){
+  const el=document.createElement('div'); el.className='tag'; el.textContent=text; el.hidden=true; layer.appendChild(el);
+  labels.push({pos:new V3(p[0],p[1],p[2]),el,userData:{views},on:false});
+}
+
+/* Coordinates (cm): x runs along the bed from foot (x=0, ladder) to head (x=D, back wall at x=D+hg);
+   z runs out from the side wall (z=0) into the room; y is up from the floor. */
+function buildRoom(){
+  const {x0,xw,zMax,rh,wtb,bw,bu}=d, xe=xw+16;
+  if(mode==='blue'){
+    box(x0,xe,-14,0,-16,zMax,M.slab);
+    box(x0,xw,0,rh,-16,0,M.slab);
+    box(xw,xe,0,rh,-16,zMax,M.slab);
+    box(x0,xe,rh,rh+14,-16,zMax,M.ceil,{hide:['plan']});
+    const mi=[],ma=[];
+    for(let x=Math.ceil(x0/10)*10;x<=xw;x+=10)(x%50===0?ma:mi).push(new V3(x,.15,0),new V3(x,.15,zMax));
+    for(let z=0;z<=zMax;z+=10)(z%50===0?ma:mi).push(new V3(x0,.15,z),new V3(xw,.15,z));
+    [[mi,M.gridMinor],[ma,M.gridMajor]].forEach(([p,m])=>{const l=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(p),m); l.userData.views=['p3d','plan']; world.add(l);});
+  } else {
+    box(x0,xe,-14,0,-16,zMax,M.floor);
+    box(x0,xw,0,rh,-16,0,M.wall);
+    box(xw,xe,0,rh,-16,zMax,M.wall);
+    const cp=new THREE.Mesh(new THREE.PlaneGeometry(xe-x0,zMax+16),M.ceilP);
+    cp.rotation.x=Math.PI/2; cp.position.set((x0+xe)/2,rh,(zMax-16)/2); cp.userData.views=['p3d']; world.add(cp);
+    box(x0,xe,rh,rh+14,-16,zMax,M.ceil,{views:['sect','elev']});
+  }
+  box(x0,xw,bu,rh,wtb,wtb+bw,M.beam,{hide:['plan']});
+  rect(x0,xw,wtb,wtb+bw,bu,M.overhead,{views:['plan']});
+}
+
+function buildBed(){
+  const {t,W,D,H,topW,gap,deck,deckLow,mB,mT,shoulderStart:s0,shoulderEnd:s1}=d, F=M.frame;
+  const V=(x,y,v)=>new V3(x,y,gap+v);
+  const xF=t/2, xH=D-t/2, vW=t/2, vR=W-t/2, vT=topW-t/2, vL=Math.max(vW+20,vT-40);
+  const shoulder=vR-vT>1;
+  const yDL=deckLow-t/2, yDT=deck-t/2, yMid=deck+20, yTop=H-t/2;
+  // posts: wall side full height; room side steps in at the shoulder to carry the narrower top bunk
+  [xF,xH].forEach(x=>member(V(x,0,vW),V(x,H,vW),F));
+  if(shoulder){
+    [xF,xH].forEach(x=>{member(V(x,0,vR),V(x,s0,vR),F); member(V(x,s0,vR),V(x,s1,vT),F);});
+    member(V(xH,s1,vT),V(xH,H,vT),F);
+    member(V(xF,0,vT),V(xF,H,vT),F);
+  } else {
+    [xF,xH].forEach(x=>member(V(x,0,vR),V(x,H,vR),F));
+  }
+  member(V(xF,0,vL),V(xF,H,vL),F); // ladder stringer
+  const LR=(y,v)=>member(V(t,y,v),V(D-t,y,v),F);
+  LR(yDL,vW); LR(yDL,vR);
+  [yDT,yMid,yTop].forEach(y=>{LR(y,vW); LR(y,vT);});
+  const CR=(x,y,a,b)=>{if(b-a>1) member(V(x,y,a),V(x,y,b),F);};
+  const r1=(yDL+s0)/2, r2=s0-t/2;
+  [xF,xH].forEach(x=>{[yDL,r1,r2].forEach(y=>CR(x,y,t,W-t)); CR(x,yDT,t,topW-t);}); // foot-end rails double as rungs
+  [yMid,yTop].forEach(y=>{CR(xH,y,t,topW-t); CR(xF,y,t,vL-t/2);});                // opening above the ladder
+  const ry=[yDL,r1,r2,yDT].sort((a,b)=>a-b);                                        // extra rungs so steps stay under ~36 cm
+  for(let k=0;k<ry.length-1;k++){const g=ry[k+1]-ry[k], n=Math.ceil(g/36)-1; for(let j=1;j<=n;j++) CR(xF,ry[k]+g*j/(n+1),vL+t/2,vT-t/2);}
+  const slats=(y,va,vb)=>{for(let x=t+8;x<D-t-4;x+=17) box(x-3.5,x+3.5,y-1.8,y,gap+va,gap+vb,M.slat);};
+  slats(deckLow,t,W-t); slats(deck,t,topW-t);
+  box(t+.5,D-t-.5,deckLow,deckLow+mB,gap+t+.5,gap+W-t-.5,M.matt);
+  box(t+.5,D-t-.5,deck,deck+mT,gap+t+.5,gap+topW-t-.5,M.matt);
+  const inner=W-2*t, pw=Math.min(56,inner/2-6), px=D-t-24;
+  pillow(px,deckLow+mB+5,gap+t+inner*.27,36,12,pw,M.pillow);
+  pillow(px,deckLow+mB+5,gap+t+inner*.73,36,12,pw,M.pillow);
+  pillow(px,deck+mT+5,gap+topW/2,36,11,Math.min(60,topW-2*t-10),M.pillow);
+  const za=gap+vL-14, zb=gap+vT+14;
+  rect(-60,0,za,zb,.5,M.zone,{views:['p3d','plan']});
+  return (za+zb)/2;
+}
+
+function buildLights(){
+  world.add(new THREE.HemisphereLight(C(0xfffaf2),C(0x9a8b78),.62));
+  const sun=new THREE.DirectionalLight(C(0xfff4e6),.85);
+  sun.position.set(-230,430,400); sun.target.position.set(d.D/2,40,70);
+  sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
+  Object.assign(sun.shadow.camera,{left:-340,right:340,top:340,bottom:-340,near:100,far:1500}); sun.shadow.camera.updateProjectionMatrix();
+  sun.shadow.bias=-.0006; sun.shadow.normalBias=.6;
+  world.add(sun); world.add(sun.target);
+  const fill=new THREE.DirectionalLight(C(0xdfe7f5),.3); fill.position.set(-300,180,-60); world.add(fill);
+}
+
+function buildAnnotations(c,zoneZ){
+  const {W,D,H,rh,wtb,bw,bu,bd,gap,t,topW,deck,deckLow,mB,mT,x0,xw,zMax}=d, zB=gap+W, z2=wtb+bw, s=c.s;
+  const reach=wtb-c.freeB, yT=c.yTopZone-8; // frame edge near the top of the bed (or at beam height if lower)
+  // Section A-A: from the foot, looking toward the head
+  const X=-20, S=['sect'];
+  if(gap>.5) dim([X,0,0],[X,0,gap],'y',-26,r(gap),{views:S});
+  dim([X,0,gap],[X,0,zB],'y',-26,r(W),{views:S,sub:'cama'});
+  if(Math.abs(c.free0)>.5) dim([X,0,zB],[X,0,wtb],'y',-26,r(Math.abs(c.free0)),{views:S,kind:'clr',state:s.free0,sub:c.free0>=0?'libre':'excede'});
+  dim([X,0,0],[X,0,wtb],'y',-48,r(wtb),{views:S,sub:'pared a trabe'});
+  dim([X,0,gap],[X,deck,gap],'z',-38,r(deck),{views:S,sub:'cama sup.'});
+  dim([X,0,gap],[X,H,gap],'z',-64,r(H)+'*',{views:S,sub:'total'});
+  dim([X,0,z2],[X,bu,z2],'z',z2+22,r(bu),{views:S,sub:'a trabe'});
+  if(bd>.5) dim([X,bu,z2],[X,rh,z2],'z',z2+22,r(bd),{views:S,sub:'trabe'});
+  dim([X,0,z2],[X,rh,z2],'z',z2+52,r(rh),{views:S,sub:'techo'});
+  if(c.freeB>.5) dim([X,yT,reach],[X,yT,wtb],'y',yT,r(c.freeB),{views:S,kind:'clr',state:s.freeB,sub:'a trabe'});
+  dim([X,deck+mT,gap+topW*.5],[X,rh,gap+topW*.5],'z',gap+topW*.5,r(c.head),{views:S,kind:'clr',state:s.head,sub:'altura libre'});
+  dim([X,deckLow+mB,gap+28],[X,deck-t,gap+28],'z',gap+28,r(c.sit),{views:S,kind:'clr',state:s.sit,sub:'para sentarse'});
+  tag([X,rh*.62,-8],'Pared',S); tag([X,(bu+rh)/2,wtb+bw/2],'Trabe',S);
+  tag([X,rh+7,gap+W/2],'Techo +'+r(rh),S); tag([X,-7,gap+W*.72],'Piso ±0',S);
+  // Elevation: from the room, facing the side wall (foot left, head right)
+  const Z=zB+10, E=['elev'];
+  dim([0,0,Z],[D,0,Z],'y',-26,r(D),{views:E,sub:'cama'});
+  dim([0,0,Z],[0,deck,Z],'x',-24,r(deck),{views:E,sub:'cama sup.'});
+  dim([0,0,Z],[0,H,Z],'x',-48,r(H)+'*',{views:E,sub:'total'});
+  dim([0,0,Z],[0,bu,Z],'x',-72,r(bu),{views:E,sub:'a trabe',frac:.3});
+  dim([0,0,Z],[0,rh,Z],'x',-96,r(rh),{views:E,sub:'techo'});
+  if(Math.abs(c.over)>.5) dim([D*.5,H,Z],[D*.5,bu,Z],'x',D*.5,r(Math.abs(c.over)),{views:E,kind:'clr',state:s.beam,sub:c.over<0?'bajo trabe':'sobre trabe'});
+  dim([D-t-40,deckLow+mB,Z],[D-t-40,deck-t,Z],'x',D-t-40,r(c.sit),{views:E,kind:'clr',state:s.sit,sub:'para sentarse'});
+  dim([D-t-40,deck+mT,Z],[D-t-40,H,Z],'x',D-t-40,r(c.rail),{views:E,kind:'clr',state:s.rail,sub:'barandal'});
+  tag([18,-40,Z],'Pies · escalera',E); tag([D-12,-40,Z],'Cabecera',E);
+  tag([D*.25,(bu+rh)/2,z2+1],'Trabe (al frente)',E); tag([D/2,rh+7,z2+1],'Techo +'+r(rh),E); tag([D/2,-7,Z],'Piso ±0',E);
+  // Plan: ceiling removed, beam dashed overhead
+  const Y=rh+20, PL=['plan'];
+  dim([0,Y,gap],[D,Y,gap],'z',-30,r(D),{views:PL,sub:'cama'});
+  if(gap>.5) dim([0,Y,0],[0,Y,gap],'x',-82,r(gap),{views:PL});
+  dim([0,Y,gap],[0,Y,zB],'x',-82,r(W),{views:PL});
+  if(Math.abs(c.free0)>.5) dim([0,Y,zB],[0,Y,wtb],'x',-82,r(Math.abs(c.free0)),{views:PL,kind:'clr',state:s.free0});
+  dim([0,Y,0],[0,Y,wtb],'x',-110,r(wtb),{views:PL});
+  if(c.freeB>.5) dim([D*.35,Y,reach],[D*.35,Y,wtb],'x',D*.35,r(c.freeB),{views:PL,kind:'clr',state:s.freeB,sub:'cama sup.'});
+  tag([D*.72,Y,wtb+bw/2],'Trabe arriba',PL); tag([-30,Y,zoneZ],'Escalera',PL); tag([D*.5,Y,zMax-24],'Recámara',PL);
+  // 3D
+  const P3=['p3d'];
+  dim([0,0,zB],[D,0,zB],'z',zB+16,r(D),{views:P3});
+  dim([0,0,gap],[0,0,zB],'x',-76,r(W),{views:P3});
+  if(Math.abs(c.free0)>.5) dim([0,0,zB],[0,0,wtb],'x',-76,r(Math.abs(c.free0)),{views:P3,kind:'clr',state:s.free0});
+  dim([0,0,0],[0,0,wtb],'x',-100,r(wtb),{views:P3,sub:'a trabe'});
+  dim([0,0,gap+topW],[0,deck,gap+topW],'x',-18,r(deck),{views:P3,sub:'cama sup.'});
+  dim([x0+24,0,wtb],[x0+24,bu,wtb],'z',wtb,r(bu),{views:P3,sub:'bajo trabe'});
+  dim([xw-2,0,zMax-30],[xw-2,rh,zMax-30],'x',xw-2,r(rh),{views:P3,sub:'techo'});
+  if(c.freeB>.5) dim([D*.3,yT,reach],[D*.3,yT,wtb],'x',D*.3,r(c.freeB),{views:P3,kind:'clr',state:s.freeB,sub:'a trabe'});
+  dim([D*.6,deck+mT,gap+topW/2],[D*.6,rh,gap+topW/2],'x',D*.6,r(c.head),{views:P3,kind:'clr',state:s.head,sub:'altura libre'});
+  tag([x0+70,(bu+rh)/2,wtb+bw/2],'Trabe',P3); tag([-30,1,zoneZ],'Acceso escalera',P3);
+}
+
+function disposeWorld(g){
+  const mats=new Set();
+  g.traverse(o=>{
+    if(o.geometry) o.geometry.dispose();
+    if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>mats.add(m));
+    if(o.isLight&&o.shadow&&o.shadow.map) o.shadow.map.dispose();
+  });
+  mats.forEach(m=>{if(m.map) m.map.dispose(); m.dispose();});
+}
+
+function build(){
+  if(world){disposeWorld(world); scene.remove(world);}
+  world=new THREE.Group(); scene.add(world);
+  layer.textContent=''; labels=[];
+  d=derive(P);
+  renderer.outputEncoding=mode==='render'?THREE.sRGBEncoding:THREE.LinearEncoding;
+  renderer.shadowMap.enabled=mode==='render';
+  renderer.setClearColor(mode==='render'?0xe4e0da:0x0f3a60,1);
+  M=makeMats();
+  const c=compute(d);
+  buildRoom();
+  const zoneZ=buildBed();
+  if(mode==='render') buildLights();
+  buildAnnotations(c,zoneZ);
+  applyVis();
+  renderChecks(d,c);
+}
+
+/* ---------- views ---------- */
+function visIn(o){
+  const u=o.userData;
+  if(u.views&&u.views.indexOf(view)<0) return false;
+  if(u.hide&&u.hide.indexOf(view)>=0) return false;
+  if(u.dim&&!showDims) return false;
+  return true;
+}
+function applyVis(){
+  world.traverse(o=>{const u=o.userData; if(o!==world&&(u.views||u.hide||u.dim)) o.visible=visIn(o);});
+  labels.forEach(L=>{L.on=visIn(L); if(!L.on) L.el.hidden=true;});
+}
+function setOrtho(){const {w,h}=size(), a=w/h; ortho.left=-halfH*a; ortho.right=halfH*a; ortho.top=halfH; ortho.bottom=-halfH; ortho.updateProjectionMatrix();}
+function fitOrtho(v){
+  const {rh,wtb,bw,gap,W,xw}=d, zB=gap+W, z2=wtb+bw; let h0,h1,v0,v1;
+  if(v==='sect'){h0=-64;h1=z2+70;v0=-60;v1=rh+26;}
+  else if(v==='elev'){h0=-118;h1=xw+40;v0=-44;v1=rh+26;}
+  else {h0=-130;h1=xw+36;v0=-46;v1=Math.max(z2,zB)+30;}
+  const span=v1-v0;
+  if(v==='plan'){v0-=span*.14; v1+=span*.1;} else {v1+=span*.14; v0-=span*.1;}
+  const ch=(h0+h1)/2, cv=(v0+v1)/2, {w,h}=size(), a=w/h;
+  halfH=Math.max((v1-v0)/2,(h1-h0)/2/a)*1.04;
+  let tg;
+  if(v==='sect'){tg=new V3(0,cv,ch); ortho.up.set(0,1,0); ortho.position.set(-1500,cv,ch);}
+  else if(v==='elev'){tg=new V3(ch,cv,0); ortho.up.set(0,1,0); ortho.position.set(ch,cv,1500);}
+  else {tg=new V3(ch,0,cv); ortho.up.set(0,0,-1); ortho.position.set(ch,1500,cv);}
+  ortho.zoom=1; setOrtho(); ortho.lookAt(tg); return tg;
+}
+function fitPersp(){
+  // Standing at the foot of the bed facing the ladder, side wall on the left, beam overhead to the right.
+  const {D,gap,W}=d, {w,h}=size(), a=w/h;
+  const tg=new V3(D*.42,100,gap+W/2+8);
+  const dir=new V3(-336,80,18).normalize();
+  let dist=560; if(a<1.3) dist*=Math.min(1.8,1.3/a);
+  persp.up.set(0,1,0); persp.aspect=a; persp.updateProjectionMatrix();
+  persp.position.copy(tg).addScaledVector(dir,dist); persp.lookAt(tg); return tg;
+}
+const META={
+  p3d:['3D · desde los pies','A-01','Arrastra para girar · rueda o pellizca para acercar · clic derecho para desplazar'],
+  plan:['Planta · sin techo','A-02','Arrastra para desplazar · rueda o pellizca para acercar'],
+  elev:['Elevación · hacia la pared','A-03','Arrastra para desplazar · rueda o pellizca para acercar'],
+  sect:['Corte A–A · hacia cabecera','A-04','Arrastra para desplazar · rueda o pellizca para acercar']
+};
+function updateUI(){
+  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.view===view)));
+  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
+  $('dimsBtn').setAttribute('aria-pressed',String(showDims));
+  const m=META[view]; $('tbView').textContent=m[0]; $('tbDwg').textContent=m[1]; $('hint').textContent=m[2];
+  stage.dataset.mode=mode;
+}
+function setView(v){
+  view=v; if(controls) controls.dispose();
+  const tg=v==='p3d'?fitPersp():fitOrtho(v);
+  camera=v==='p3d'?persp:ortho;
+  controls=new THREE.OrbitControls(camera,renderer.domElement);
+  controls.target.copy(tg);
+  if(v==='p3d'){
+    controls.enableDamping=!reduce; controls.dampingFactor=.08;
+    controls.minDistance=100; controls.maxDistance=1600; controls.maxPolarAngle=Math.PI/2-.03;
+  } else {
+    controls.enableRotate=false; controls.minZoom=.5; controls.maxZoom=8;
+    controls.mouseButtons={LEFT:THREE.MOUSE.PAN,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:THREE.MOUSE.PAN};
+    controls.touches={ONE:THREE.TOUCH.PAN,TWO:THREE.TOUCH.DOLLY_PAN};
+  }
+  controls.update(); applyVis(); updateUI();
+}
+
+/* ---------- frame loop ---------- */
+const _v=new V3(); let lastScale='';
+function placeLabels(){
+  const {w,h}=size();
+  for(const L of labels){
+    if(!L.on) continue;
+    _v.copy(L.pos).project(camera);
+    const off=_v.z>1||_v.z<-1||Math.abs(_v.x)>1.15||Math.abs(_v.y)>1.15;
+    if(L.el.hidden!==off) L.el.hidden=off;
+    if(!off) L.el.style.transform=`translate(${((_v.x+1)/2*w).toFixed(1)}px,${((1-_v.y)/2*h).toFixed(1)}px) translate(-50%,-50%)`;
+  }
+}
+function scaleBar(){
+  const el=$('scale');
+  if(camera!==ortho){if(!el.hidden) el.hidden=true; return;}
+  const ppc=size().h/(2*halfH/ortho.zoom); let L=10;
+  for(const o of [10,20,25,50,100,200]) if(o*ppc<=140) L=o;
+  const px=Math.round(L*ppc), key=L+':'+px;
+  if(key!==lastScale){lastScale=key; $('scaleBar').style.width=px+'px'; $('scaleTxt').textContent=L+' cm';}
+  if(el.hidden) el.hidden=false;
+}
+function frame(){
+  if(controls) controls.update();
+  renderer.render(scene,camera);
+  placeLabels(); scaleBar();
+  requestAnimationFrame(frame);
+}
+function onResize(){
+  const {w,h}=size(); renderer.setSize(w,h,false);
+  persp.aspect=w/h; persp.updateProjectionMatrix(); setOrtho();
+}
+
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{
+  if(mode===b.dataset.mode) return; mode=b.dataset.mode; build(); updateUI();
+}));
+$('dimsBtn').addEventListener('click',()=>{showDims=!showDims; applyVis(); updateUI();});
+wireForm(build);
+
+fillForm();
+onResize();
+if(window.ResizeObserver) new ResizeObserver(onResize).observe(vp); else window.addEventListener('resize',onResize);
+build();
+setView(view);
+frame();
+})();
+</script>
+</body>
+</html>
